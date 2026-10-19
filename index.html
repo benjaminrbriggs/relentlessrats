@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relentless Rats · a daily Magic dive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jacquard+12&family=Alegreya+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1c1208;--brown:#2b1d0e;--parch:#d8c08c;--mute:#6b5230;--cream:#f3e9d2;--gold:#e2b24a}
+*{box-sizing:border-box}
+/* Overworld: a generated 2D tile map, drawn into #world */
+body{margin:0;padding:18px 12px 30px;min-height:100vh;color:var(--brown);font:32px/1.3 'Alegreya Sans',system-ui,sans-serif;image-rendering:pixelated;
+ background:#1b3a9a}
+#world{position:fixed;inset:0;width:100%;height:100%;z-index:-1;image-rendering:pixelated}
+/* Duel window: bronze frame around a slate board */
+.mat{max-width:1400px;margin:0 auto;padding:36px 32px 44px;position:relative;overflow:hidden;color:var(--cream);
+ background:linear-gradient(45deg,#ffffff0a 25%,transparent 25% 75%,#ffffff0a 75%) 0 0/8px 8px,#27344d;
+ border:6px solid;border-color:#c2a868 #4a3a1c #4a3a1c #c2a868;box-shadow:0 0 0 4px var(--ink),12px 12px 0 4px #0007}
+.mat::before{content:"";position:absolute;left:50%;top:44%;width:560px;height:560px;margin:-280px 0 0 -280px;opacity:.2;pointer-events:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300' shape-rendering='crispEdges'%3E%3Cpolygon points='150,50 245,119 209,231 91,231 55,119' fill='none' stroke='%23c2a868' stroke-width='6'/%3E%3Crect x='140' y='40' width='20' height='20' fill='%23f8f4d8'/%3E%3Crect x='235' y='109' width='20' height='20' fill='%235aa9e6'/%3E%3Crect x='199' y='221' width='20' height='20' fill='%236b5b7b'/%3E%3Crect x='81' y='221' width='20' height='20' fill='%23e5484d'/%3E%3Crect x='45' y='109' width='20' height='20' fill='%233fa34d'/%3E%3C/svg%3E") center/contain no-repeat}
+.mat>*{position:relative}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:-12px -12px 24px;padding:14px 22px;background:linear-gradient(#2c4c8a,#16305c);border:4px solid;border-color:#8da2d6 #0a1430 #0a1430 #8da2d6}
+.logo{display:flex;align-items:center;gap:14px}
+h1{font:400 56px/1 'Jacquard 12',Georgia,serif;margin:0;color:#f4d98c;text-shadow:3px 3px 0 #000}
+header span{color:#c9d6f7}
+h2{font:700 44px/1.2 'Alegreya Sans',system-ui,sans-serif;margin:0 0 14px;color:var(--brown)}
+.field{display:grid;grid-template-columns:repeat(7,1fr);gap:18px;padding:26px;background:#121a2acc;border:4px solid;border-color:#070b14 #56688c #56688c #070b14;margin-bottom:20px}
+.slot{position:relative;padding:3px;border:3px solid #26354f;min-width:0;background:#0e1522}
+.slot.filled{border-color:transparent;background:none}
+.slot.cur{border-color:var(--gold);animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{border-color:#26354f}}
+.ph{aspect-ratio:5/7;display:grid;place-items:center;color:#26354f;font:700 56px 'Alegreya Sans',system-ui,sans-serif}
+.pc{border:4px solid var(--c);box-shadow:0 0 0 2px #000,5px 5px 0 #0009}
+.pc canvas{display:block;width:100%;aspect-ratio:5/7;image-rendering:pixelated;background:#120a22}
+.cap{display:flex;flex-direction:column;margin-top:12px;font-size:30px;line-height:1;text-align:center;color:var(--cream)}
+.cap .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cap b{font-weight:700;color:var(--c)}
+.summon .pc{animation:drop .6s steps(7) both}
+.summon::after{content:"";position:absolute;inset:0;pointer-events:none;animation:ring .7s steps(6) .35s both}
+@keyframes drop{0%{transform:translateY(-110px) scale(1.8);opacity:0}55%{transform:translateY(0) scale(1.08);opacity:1}100%{transform:none}}
+@keyframes ring{from{box-shadow:0 0 0 0 var(--c)}to{box-shadow:0 0 0 30px #0000}}
+/* Parchment dialog */
+.panel{position:relative;padding:34px;color:var(--brown);
+ background:linear-gradient(45deg,#0000000d 25%,transparent 25% 75%,#0000000d 75%) 0 0/8px 8px,var(--parch);
+ border:4px solid;border-color:#f1e3b8 #6a5430 #6a5430 #f1e3b8;box-shadow:0 0 0 4px var(--ink),8px 8px 0 4px #0008}
+.sub{color:var(--mute);margin:0 0 12px}
+.box{display:flex;gap:12px}
+input{flex:1;min-width:0;font:600 36px 'Alegreya Sans',system-ui,sans-serif;color:var(--brown);background:#f7edcf;border:4px solid;border-color:#6a5430 #f1e3b8 #f1e3b8 #6a5430;border-radius:0;padding:14px 18px}
+input:focus,button:focus-visible{outline:4px solid #1c3a8a;outline-offset:2px}
+button{font:700 28px/1.1 'Alegreya Sans',system-ui,sans-serif;padding:16px 28px;color:var(--ink);background:#b8902f;border:4px solid;border-color:#efd484 #5c4210 #5c4210 #efd484;border-radius:0;cursor:pointer}
+button:hover{background:#c99f38}
+button.alt,.dice{color:var(--cream);background:#4a526e;border-color:#9aa4c8 #1a1f33 #1a1f33 #9aa4c8}
+button.alt:hover,.dice:hover{background:#5a6482}
+button:active{padding:18px 26px 14px 30px;border-color:#5c4210 #efd484 #efd484 #5c4210}
+.dice{flex:none;padding:4px}
+.dice svg{display:block}
+.mull{display:flex;align-items:center;gap:14px;margin-top:16px}
+.mull p{margin:0}
+.hint{min-height:38px;margin-top:10px;color:#8a1c1c}
+.row{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+.tier{display:inline-block;font:700 34px/1 'Alegreya Sans',system-ui,sans-serif;background:var(--ink);padding:8px 14px;border:3px solid;border-color:#6a5430 #2a1d0e #2a1d0e #6a5430;margin-bottom:6px}
+.nm2{font-size:46px;font-weight:700;margin:4px 0 10px}
+.gauge{position:relative;height:36px;border:4px solid;border-color:#6a5430 #f1e3b8 #f1e3b8 #6a5430;background:var(--brown)}
+.gauge b{display:block;height:100%;width:0;transition:width .9s steps(18)}
+.gauge::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,#0000 0 10px,var(--brown) 10px 12px)}
+.big{font:700 56px 'Alegreya Sans',system-ui,sans-serif;color:#8a1c1c;margin:6px 0 12px}
+.res{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:2px dotted #8f7440}
+.res span+span{background:var(--ink);padding:0 10px;align-self:center;white-space:nowrap}
+.res small{color:var(--mute);font-size:26px}
+@media (max-width:640px){body{padding:8px;font-size:24px}.cap{font-size:20px}.panel{padding:20px}input{font-size:28px}button{font-size:22px;padding:12px 18px}.nm2{font-size:34px}.big{font-size:42px}.tier{font-size:26px}.field{grid-template-columns:repeat(4,1fr)}.mat{padding:16px 12px 24px}h1{font-size:30px}h2{font-size:26px}.logo svg{width:56px;height:auto}}
+@media (prefers-reduced-motion:reduce){.summon .pc,.summon::after,.slot.cur{animation:none}.gauge b{transition:none}}
+</style>
+</head>
+<body>
+<canvas id="world" aria-hidden="true"></canvas>
+<main id="app" class="mat"></main>
+<script>
+
+// Each prompt = [label, Scryfall search query]. All result pages are loaded.
+const PROMPTS = [
+  ['Name a Goblin','t:goblin t:creature'],
+  ['Name a Dragon','t:dragon t:creature'],
+  ['Name a Zombie','t:zombie t:creature'],
+  ['Name a Merfolk','t:merfolk'],
+  ['Name a Vampire','t:vampire t:creature'],
+  ['Name an Angel','t:angel'],
+  ['Name a Cat','t:cat t:creature'],
+  ['Name a Rogue','t:rogue t:creature'],
+  ['Name a Planeswalker','t:planeswalker'],
+  ['Name a Saga','t:saga'],
+  ['Name an Equipment','t:equipment'],
+  ['Name a nonland card with mana value 0','mv=0 -t:land'],
+  ['Name a red instant with mana value 1','c:r t:instant mv=1'],
+  ['Name a white sorcery with mana value 2 or less','c:w t:sorcery mv<=2'],
+  ['Name a blue counterspell','c:u o:"counter target spell"'],
+  ['Name an artifact creature with mana value 3','t:artifact t:creature mv=3'],
+  ['Name a green creature with power 6 or more','c:g t:creature pow>=6'],
+  ['Name a legendary creature from Kamigawa','t:legendary t:creature (set:chk or set:bok or set:sok or set:neo)'],
+  ['Name a black creature with mana value 1','c:b t:creature mv=1'],
+  ['Name an enchantment with mana value 1','t:enchantment -t:creature mv=1'],
+  ['Name a Wizard with mana value 2','t:wizard mv=2'],
+  ['Name a land that taps for two colors','t:land o:"add {" produces>=2 -t:basic'],
+  // ---- second set ----
+  ['Name a Sliver','t:sliver'],
+  ['Name an Elf','t:elf t:creature'],
+  ['Name a Knight','t:knight'],
+  ['Name a Hydra','t:hydra'],
+  ['Name a Demon','t:demon'],
+  ['Name a Phyrexian creature','t:phyrexian t:creature'],
+  ['Name a Vehicle','t:vehicle'],
+  ['Name a snow permanent','t:snow'],
+  ['Name a legendary artifact','t:legendary t:artifact'],
+  ['Name an Elemental with mana value 5 or more','t:elemental mv>=5'],
+  ['Name a creature with deathtouch','t:creature kw:deathtouch'],
+  ['Name a card with cycling','kw:cycling'],
+  ['Name a creature with flying and mana value 2','t:creature kw:flying mv=2'],
+  ['Name a card that creates a Treasure token','o:"create a treasure token"'],
+  ['Name a black instant that destroys a creature','c:b t:instant o:"destroy target creature"'],
+  ['Name a white-blue card','c=wu'],
+  ['Name a black-red card','c=br'],
+  ['Name a green-blue card','c=gu'],
+  ['Name a mythic rare planeswalker','t:planeswalker r:mythic'],
+  ['Name a white mythic rare creature','c:w t:creature r:mythic'],
+  ['Name a card from Limited Edition Alpha','set:lea'],
+  ['Name a card from original Innistrad','set:isd'],
+  ['Name a card from Mirrodin','set:mrd'],
+  ['Name a card from Time Spiral','set:tsp'],
+  ['Name a card from Theros','set:ths'],
+  ['Name an Aura with mana value 1','t:aura mv=1'],
+  // ---- third set: creature types ----
+  ['Name a Rat','t:rat t:creature'],
+  ['Name a Bird','t:bird t:creature'],
+  ['Name a Beast','t:beast t:creature'],
+  ['Name a Wolf','t:wolf t:creature'],
+  ['Name a Spider','t:spider t:creature'],
+  ['Name a Snake','t:snake t:creature'],
+  ['Name a Dinosaur','t:dinosaur'],
+  ['Name a Pirate','t:pirate t:creature'],
+  ['Name a Dwarf','t:dwarf t:creature'],
+  ['Name a Giant','t:giant t:creature'],
+  ['Name a Treefolk','t:treefolk'],
+  ['Name an Eldrazi','t:eldrazi'],
+  ['Name a Golem','t:golem'],
+  ['Name a Werewolf','t:werewolf'],
+  ['Name a Shaman','t:shaman t:creature'],
+  ['Name a Cleric','t:cleric t:creature'],
+  ['Name a Druid','t:druid t:creature'],
+  ['Name an Insect','t:insect t:creature'],
+  ['Name a Squirrel','t:squirrel t:creature'],
+  ['Name a legendary Dragon','t:legendary t:dragon'],
+  ['Name a legendary Elf','t:legendary t:elf'],
+  // keywords
+  ['Name a creature with haste and mana value 2 or less','t:creature kw:haste mv<=2'],
+  ['Name a creature with lifelink','t:creature kw:lifelink'],
+  ['Name a creature with flash','t:creature kw:flash'],
+  ['Name a creature with hexproof','t:creature kw:hexproof'],
+  ['Name a creature with menace','t:creature kw:menace'],
+  ['Name a creature with first strike','t:creature kw:"first strike"'],
+  ['Name a card with kicker','kw:kicker'],
+  ['Name a card with flashback','kw:flashback'],
+  ['Name a card with cascade','kw:cascade'],
+  ['Name a card with convoke','kw:convoke'],
+  ['Name a card with prowess','kw:prowess'],
+  ['Name a card with ward','kw:ward'],
+  ['Name a card with storm','kw:storm'],
+  ['Name a card with affinity','kw:affinity'],
+  // colors, costs and stats
+  ['Name a blue creature with mana value 1','c:u t:creature mv=1'],
+  ['Name a white creature with mana value 1','c:w t:creature mv=1'],
+  ['Name a red creature with mana value 1','c:r t:creature mv=1'],
+  ['Name a green creature with mana value 1','c:g t:creature mv=1'],
+  ['Name a blue sorcery','c:u t:sorcery'],
+  ['Name a red sorcery with mana value 3','c:r t:sorcery mv=3'],
+  ['Name a black enchantment','c:b t:enchantment'],
+  ['Name a nonland card with mana value 8 or more','mv>=8 -t:land'],
+  ['Name a card with X in its mana cost','m:{X}'],
+  ['Name a hybrid mana card','is:hybrid'],
+  ['Name a multicolored creature with mana value 3','t:creature c>=2 mv=3'],
+  ['Name a 1/1 creature with mana value 1','t:creature pow=1 tou=1 mv=1'],
+  ['Name a 2/2 creature with mana value 3','t:creature pow=2 tou=2 mv=3'],
+  ['Name a creature with toughness 1 and power 4 or more','t:creature tou=1 pow>=4'],
+  // card shapes and rarer types
+  ['Name a split card','is:split'],
+  ['Name a transforming double-faced card','is:transform'],
+  ['Name a modal double-faced card','is:mdfc'],
+  ['Name an Adventure card','t:adventure'],
+  ['Name a Gate','t:gate'],
+  ['Name a Desert','t:desert'],
+  ['Name a Lesson','t:lesson'],
+  ['Name a legendary land','t:legendary t:land'],
+  // effects
+  ['Name a mana rock','t:artifact o:"{T}: Add" -t:creature -t:land mv<=3'],
+  ['Name a red burn spell','c:r t:instant o:"damage to any target"'],
+  ['Name a green ramp spell','c:g t:sorcery o:"search your library for a basic land"'],
+  ['Name a board wipe','o:"destroy all creatures"'],
+  ['Name a reanimation spell','o:"from your graveyard to the battlefield" -t:creature'],
+  ['Name a card that makes Zombie tokens','o:"Zombie creature token"'],
+  ['Name a card that makes Food','o:"create a Food token"'],
+  ['Name a card that makes Clues','o:"create a Clue token"'],
+  // artists
+  ['Name a card illustrated by Rebecca Guay','a:"Rebecca Guay"'],
+  ['Name a card illustrated by Terese Nielsen','a:"Terese Nielsen"'],
+  ['Name a card illustrated by John Avon','a:"John Avon"'],
+  // sets
+  ['Name a card from Odyssey','set:ody'],
+  ['Name a card from Onslaught','set:ons'],
+  ['Name a card from Ravnica: City of Guilds','set:rav'],
+  ['Name a card from Zendikar','set:zen'],
+  ['Name a card from Khans of Tarkir','set:ktk'],
+  ['Name a card from Dominaria','set:dom'],
+  ['Name a card from War of the Spark','set:war'],
+  ['Name a card from Modern Horizons','set:mh1'],
+  ['Name a card from Bloomburrow','set:blb'],
+  ['Name a card from Lorwyn','set:lrw'],
+  ['Name a card from Urza’s Saga','set:usg'],
+  ['Name a card from Tempest','set:tmp'],
+];
+const TIERS = [ // [depth below, name, square, color] — most common answers to least common
+  [25,'Common','⬜','#b4bbc8'],[50,'Uncommon','🟦','#7fb2d9'],[75,'Rare','🟨','#d9b13b'],
+  [91,'Mythic','🟧','#ee6a2c'],[101,'Promo','🟪','#b777ff']];
+const tierOf = d => TIERS.find(t => d < t[0]);
+const $ = s => document.querySelector(s), app = $('#app');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+
+// Seeded RNG so everyone gets the same daily prompts
+function hash(s){let h=1779033703^s.length;for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}return h>>>0}
+function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function pick(seed){const r=rng(hash(seed)),a=[...PROMPTS.keys()];for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a.slice(0,7)}
+const today = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+
+// Load the answer set from Scryfall and score rarity by EDHREC popularity rank
+const cache = {};
+async function load(i){
+  if(cache[i]) return cache[i];
+  let url = 'https://api.scryfall.com/cards/search?unique=cards&order=edhrec&q=' + encodeURIComponent(PROMPTS[i][1] + ' game:paper');
+  let cards = [];
+  for(let p=0; p<40 && url; p++){            // follow every page (175 cards each) until Scryfall says it's done
+    let j = null;
+    for(let t=0; t<3 && !j; t++){            // retry a failed page instead of silently dropping the rest
+      const r = await fetch(url);
+      if(r.ok) j = await r.json(); else await new Promise(r => setTimeout(r, 600));
+    }
+    if(!j) throw new Error('Scryfall request failed');
+    cards.push(...j.data);
+    url = j.has_more ? j.next_page : null;
+    if(url) await new Promise(r => setTimeout(r, 110));
+  }
+  if(!cards.length) throw new Error('empty');
+  const ranked = cards.filter(c => c.edhrec_rank).sort((a,b) => a.edhrec_rank - b.edhrec_rank);
+  const rest = cards.filter(c => !c.edhrec_rank);
+  const R = ranked.length;
+  const out = [...ranked, ...rest].map((c,idx) => ({
+    name: c.name, k: norm(c.name), f: norm(c.name.split(' // ')[0]), rank: idx < R ? idx + 1 : null,
+    depth: idx < R ? 90 * idx / Math.max(1, R - 1) : 95,   // unranked = never seen in Commander decks
+    img: (c.image_uris || (c.card_faces && c.card_faces[0].image_uris) || {}).normal
+  }));
+  return cache[i] = { cards: out, n: out.length };
+}
+
+
+// Logo: the rat king (left half is drawn, then mirrored)
+const mir = a => a.map(r => r + [...r].reverse().join(''));
+const LOGO = mir(["...g..g..g","...g..g..g","..gggggggg","..gggrgggg","..ssssssss",
+  "...ooo....","..oppppo..","..opppppo.","..opppbboo","...obbbbbb","...obbbbbb","..obbbrbbb","..obbbbbbb","..obbbbbll","ww.obbbllp",".w.obbllll","....obllww",".....ooooo"]);
+const RC = {o:'#2a1c14',b:'#a8937e',l:'#d8c7ae',p:'#f2a3b3',r:'#e5484d',w:'#ffffff',g:'#f4d98c',s:'#b8902f'};
+function sprite(px){
+  let o = ''; LOGO.forEach((row,y) => [...row].forEach((ch,x) => { if(RC[ch]) o += `<rect x="${x}" y="${y}" width="1" height="1" fill="${RC[ch]}"/>`; }));
+  return `<svg width="${20*px}" height="${LOGO.length*px}" viewBox="0 0 20 ${LOGO.length}" shape-rendering="crispEdges" aria-hidden="true">${o}</svg>`;
+}
+
+let S;
+function start(mode){
+  const seed = mode === 'daily' ? today() : String(Math.random());
+  S = { mode, seed, ids: pick(seed), res: [], set: null, used: null };   // used = id of the question swapped out by the mulligan
+  if(mode === 'daily'){ try{
+    const d = JSON.parse(localStorage.getItem('rats:' + seed) || '[]');
+    if(Array.isArray(d)) S.res = d; else { S.res = d.res || []; if(d.ids) S.ids = d.ids; if(d.used != null) S.used = d.used; }
+  }catch(e){} }
+  app.innerHTML = `<header><div class="logo">${sprite(4)}<h1>Relentless Rats</h1></div><span>${mode==='daily'?'Daily · '+seed:'Unlimited'}</span></header>
+    <section class="field" id="field">${'<div class="slot"><div class="ph">?</div></div>'.repeat(7)}</section><section class="panel" id="panel"></section>`;
+  S.res.forEach((_,i) => setSlot(i,false));
+  next();
+}
+// Put a card on the battlefield; the newest one gets the summoning animation.
+function setSlot(i, anim){
+  const r = S.res[i], t = tierOf(r.depth), el = $('#field').children[i];
+  el.style.setProperty('--c', t[3]); el.className = 'slot filled' + (anim ? ' summon' : ''); el.title = r.name; el.innerHTML = '';
+  const pc = document.createElement('div'); pc.className = 'pc';
+  const cv = document.createElement('canvas'); cv.width = 96; cv.height = 134; pc.append(cv);
+  if(r.img){ const im = new Image(); im.onload = () => cv.getContext('2d').drawImage(im,0,0,96,134); im.src = r.img; }
+  const cap = document.createElement('div'); cap.className = 'cap';
+  cap.innerHTML = `<span class="nm">${esc(r.name)}</span><b>${t[1]} ${Math.round(r.depth)}</b>`;
+  el.append(pc, cap);
+}
+function panel(h){
+  [...$('#field').children].forEach((el,i) => el.classList.toggle('cur', i === S.res.length && S.res.length < 7));
+  $('#panel').innerHTML = h;
+}
+async function next(){
+  if(S.res.length >= 7) return end();
+  S.set = null; panel('<p class="sub">Shuffling the library…</p>');
+  try{ S.set = await load(S.ids[S.res.length]); guess(); }
+  catch(e){ panel('<p>Couldn’t reach Scryfall. Open this file in a browser with an internet connection, then retry.</p><div class="row"><button id="retry">Retry</button></div>'); $('#retry').onclick = next; }
+}
+function lev(a,b){
+  const d=Array.from({length:a.length+1},(_,i)=>[i,...Array(b.length).fill(0)]);
+  for(let j=1;j<=b.length;j++)d[0][j]=j;
+  for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+  return d[a.length][b.length];
+}
+// Exact name, then a single partial match, then a close typo. Returns a card, or a message string.
+function match(raw){
+  const q = norm(raw), cs = S.set.cards;
+  if(!q) return 'Type a card name first.';
+  const ex = cs.find(c => c.k === q || c.f === q); if(ex) return ex;
+  if(q.length >= 3){
+    const part = cs.filter(c => c.k.includes(q));
+    if(part.length === 1) return part[0];
+    if(part.length > 1) return part.length + ' cards match that. Type more of the name.';
+  }
+  const tol = q.length < 5 ? 0 : q.length < 9 ? 1 : 2;
+  let best = null, bd = 99, tie = false;
+  for(const c of cs){ const d = Math.min(lev(q,c.k), lev(q,c.f)); if(d < bd){ bd = d; best = c; tie = false; } else if(d === bd) tie = true; }
+  if(best && bd <= tol && !tie) return best;
+  return 'No card in this answer set matches that. Check the spelling or try another.';
+}
+function guess(){
+  const i = S.ids[S.res.length];
+  panel(`<h2>${esc(PROMPTS[i][0])}</h2><p class="sub">Rarer cards do more damage.</p>
+  <div class="box"><input id="inp" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type a card name"><button id="go">Summon</button></div><div class="hint" id="hint"></div>
+  <div class="mull">${S.used === null
+    ? `<button class="dice" id="dice" title="Mulligan" aria-label="Mulligan: swap this question">${DICE}</button><p class="sub">Mulligan: swap this question, once per run.</p>`
+    : '<p class="sub">Mulligan used.</p>'}</div>`);
+  const inp = $('#inp'); inp.focus();
+  const submit = () => { const m = match(inp.value); typeof m === 'string' ? $('#hint').textContent = m : choose(m); };
+  inp.onkeydown = e => { if(e.key === 'Enter') submit(); };
+  inp.oninput = () => { $('#hint').textContent = ''; };
+  $('#go').onclick = submit;
+  if($('#dice')) $('#dice').onclick = mulligan;
+}
+const DICE = `<svg width="56" height="56" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"><rect width="12" height="12" fill="#f3e9d2"/><rect y="11" width="12" height="1" fill="#b9a9d6"/><rect x="11" width="1" height="12" fill="#b9a9d6"/><g fill="#120a22"><rect x="2" y="2" width="2" height="2"/><rect x="8" y="2" width="2" height="2"/><rect x="5" y="5" width="2" height="2"/><rect x="2" y="8" width="2" height="2"/><rect x="8" y="8" width="2" height="2"/></g></svg>`;
+function save(){ if(S.mode === 'daily'){ try{ localStorage.setItem('rats:' + S.seed, JSON.stringify({ res: S.res, ids: S.ids, used: S.used })); }catch(e){} } }
+// One mulligan per run: swap the current question for one not already in the run (or already swapped out).
+function mulligan(){
+  const cur = S.res.length, old = S.ids[cur];
+  const left = [...PROMPTS.keys()].filter(i => !S.ids.includes(i));
+  if(S.used !== null || !left.length) return;
+  S.ids[cur] = left[Math.floor(rng(hash(S.seed + 'mull' + cur))() * left.length)];
+  S.used = old; save(); next();
+}
+function choose(c){
+  S.res.push({ name: c.name, depth: c.depth, rank: c.rank, n: S.set.n, img: c.img, label: PROMPTS[S.ids[S.res.length]][0] });
+  save();
+  setSlot(S.res.length - 1, true);
+  reveal();
+}
+function reveal(){
+  const r = S.res[S.res.length-1], t = tierOf(r.depth), last = S.res.length >= 7;
+  panel(`<div class="tier" style="color:${t[3]}">Summoned: ${t[1]}</div><div class="nm2">${esc(r.name)}</div>
+    <div class="gauge"><b id="g" style="background:${t[3]}"></b></div>
+    <p class="sub" style="margin-top:10px">Depth ${Math.round(r.depth)} / 100 · ${r.rank ? 'popularity rank #'+r.rank : 'never played in Commander'}</p>
+    <div class="row"><button id="nx">${last?'See results':'Next prompt'}</button></div>`);
+  requestAnimationFrame(() => requestAnimationFrame(() => { $('#g').style.width = r.depth + '%'; }));
+  $('#nx').onclick = next;
+}
+function end(){
+  const total = Math.round(S.res.reduce((a,r) => a + r.depth, 0));
+  const share = `Relentless Rats ${S.mode==='daily'?S.seed:'(unlimited)'}\n${S.res.map(r=>tierOf(r.depth)[2]).join('')}\n${total} / 700`;
+  panel(`<h2>The swarm is summoned</h2><div class="big">${total} <span class="sub">/ 700</span></div>
+    ${S.res.map(r=>`<div class="res"><span>${esc(r.name)}<br><small>${esc(r.label)}</small></span><span style="color:${tierOf(r.depth)[3]}">${tierOf(r.depth)[1]} ${Math.round(r.depth)}</span></div>`).join('')}
+    <div class="row"><button id="sh">Copy result</button><button class="alt" id="un">Play unlimited</button></div><div class="hint" id="hint" style="color:var(--mute)"></div>`);
+  $('#sh').onclick = async () => { try{ await navigator.clipboard.writeText(share); $('#hint').textContent = 'Copied.'; }catch(e){ $('#hint').textContent = share; } };
+  $('#un').onclick = () => start('unlimited');
+}
+// Final Fantasy-style overworld: noise picks ocean, coast, desert, plains, forest, hills or mountains per 8px tile.
+function drawWorld(){
+  const cv = $('#world'), L = 3, T = 8;
+  const w = Math.ceil(innerWidth / L), h = Math.ceil(innerHeight / L);
+  cv.width = w; cv.height = h;
+  const g = cv.getContext('2d'), sd = hash('world' + today());
+  const rnd = (x,y,k) => hash(x + ',' + y + ',' + k + ',' + sd) / 4294967296;
+  const sm = t => t*t*(3-2*t);
+  const vn = (x,y,k) => { const xi = Math.floor(x), yi = Math.floor(y), xf = sm(x-xi), yf = sm(y-yi);
+    const a = rnd(xi,yi,k), b = rnd(xi+1,yi,k), c = rnd(xi,yi+1,k), d = rnd(xi+1,yi+1,k);
+    return a + (b-a)*xf + (c-a)*yf + (a-b-c+d)*xf*yf; };
+  const fb = (x,y,k) => vn(x/9,y/9,k)*.6 + vn(x/4.5,y/4.5,k)*.28 + vn(x/2.2,y/2.2,k)*.12;
+  for(let ty = 0; ty < Math.ceil(h/T); ty++) for(let tx = 0; tx < Math.ceil(w/T); tx++){
+    const e = fb(tx,ty,'e'), m = fb(tx+57,ty+31,'m'), ox = tx*T, oy = ty*T, r = rnd(tx,ty,'v');
+    const R = (x,y,ww,hh,c) => { g.fillStyle = c; g.fillRect(ox+x, oy+y, ww, hh); };
+    const grass = () => { R(0,0,8,8,'#5aae3a'); R(1+((r*10)|0)%5,2,1,1,'#78c850'); R(5,6,1,1,'#4a9a2e'); R(2,5,1,1,'#4a9a2e'); };
+    if(e < .38){ R(0,0,8,8,'#1b3a9a'); R((r*7)|0,((r*13)|0)%8,2,1,'#15308a'); }
+    else if(e < .45){ R(0,0,8,8,'#2f62d4'); if(r < .4) R(1,3,3,1,'#7aa4f4'); else if(r < .7) R(4,5,3,1,'#7aa4f4'); }
+    else if(e < .48){ R(0,0,8,8,'#dcc47a'); R(2,2,1,1,'#c0a458'); R(5,5,1,1,'#c0a458'); }
+    else if(e < .60){
+      if(m < .38){ R(0,0,8,8,'#d9b45c'); R(0,3,5,1,'#c29a40'); R(3,6,5,1,'#c29a40'); R(6,1,1,1,'#b88a30'); }
+      else if(m > .56){ grass(); R(0,1,8,5,'#1c5c24'); R(1,0,6,1,'#2e8434'); R(1,1,2,1,'#2e8434'); R(5,2,2,1,'#2e8434'); R(3,6,2,2,'#5a3a1a'); }
+      else { grass(); if(rnd(tx,ty,'c') < .008){ R(1,3,6,5,'#b0b0b8'); R(0,2,2,6,'#c8c8d0'); R(6,2,2,6,'#c8c8d0'); R(3,5,2,3,'#3a2a1a'); R(0,1,2,1,'#e5484d'); R(6,1,2,1,'#e5484d'); } }
+    }
+    else if(e < .67){ grass(); R(1,3,6,3,'#9a7a3a'); R(2,2,4,1,'#b89850'); R(1,6,6,1,'#6a5228'); }
+    else { R(0,0,8,8,'#6b5b3c'); R(3,0,2,1,'#f0f0f8'); R(2,1,4,1,'#a8a8b8'); R(1,2,6,2,'#8a7a5a'); R(0,4,8,4,'#5a4a34'); R(3,3,2,1,'#f0f0f8'); }
+  }
+}
+let wt; addEventListener('resize', () => { clearTimeout(wt); wt = setTimeout(drawWorld, 150); });
+drawWorld();
+start('daily');
+</script>
+</body>
+</html>
