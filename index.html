@@ -33,7 +33,7 @@ h2{font:700 44px/1.2 'Alegreya Sans',system-ui,sans-serif;margin:0 0 14px;color:
 .pc{border:4px solid var(--c);box-shadow:0 0 0 2px #000,5px 5px 0 #0009}
 .pc canvas{display:block;width:100%;aspect-ratio:5/7;image-rendering:pixelated;background:#120a22}
 .cap{display:flex;flex-direction:column;margin-top:12px;font-size:30px;line-height:1;text-align:center;color:var(--cream)}
-.cap .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cap>*{min-width:0;line-height:1.05}
 .cap b{font-weight:700;color:var(--c)}
 .summon .pc{animation:drop .6s steps(7) both}
 .summon::after{content:"";position:absolute;inset:0;pointer-events:none;animation:ring .7s steps(6) .35s both}
@@ -64,7 +64,17 @@ button:active{padding:18px 26px 14px 30px;border-color:#5c4210 #efd484 #efd484 #
 .gauge b{display:block;height:100%;width:0;transition:width .9s steps(18)}
 .gauge::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,#0000 0 10px,var(--brown) 10px 12px)}
 .big{font:700 56px 'Alegreya Sans',system-ui,sans-serif;color:#8a1c1c;margin:6px 0 12px}
-.res{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:2px dotted #8f7440}
+.res{border-bottom:2px dotted #8f7440}
+.res summary{display:flex;align-items:center;gap:12px;padding:8px 0;cursor:pointer;list-style:none}
+.res summary::-webkit-details-marker{display:none}
+.res summary::before{content:"▸";color:var(--mute)}
+.res[open] summary::before{content:"▾"}
+.res summary>span:first-child{flex:1}
+.top{padding:2px 0 14px 28px}
+.top>div{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
+.top .d{color:var(--mute)}
+.top .me{background:#0000001a;font-weight:700}
+.top small{display:block;color:var(--mute);font-size:24px;margin-bottom:4px}
 .res span+span{background:var(--ink);padding:0 10px;align-self:center;white-space:nowrap}
 .res small{color:var(--mute);font-size:26px}
 @media (max-width:640px){body{padding:8px;font-size:24px}.cap{font-size:20px}.panel{padding:20px}input{font-size:28px}button{font-size:22px;padding:12px 18px}.nm2{font-size:34px}.big{font-size:42px}.tier{font-size:26px}.field{grid-template-columns:repeat(4,1fr)}.mat{padding:16px 12px 24px}h1{font-size:30px}h2{font-size:26px}.logo svg{width:56px;height:auto}}
@@ -219,6 +229,8 @@ const TIERS = [ // [depth below, name, square, color] — most common answers to
   [25,'Common','⬜','#b4bbc8'],[50,'Uncommon','🟦','#7fb2d9'],[75,'Rare','🟨','#d9b13b'],
   [91,'Mythic','🟧','#ee6a2c'],[101,'Promo','🟪','#b777ff']];
 const tierOf = d => TIERS.find(t => d < t[0]);
+const PASS = [0,'Pass','⬛','#8b93a7'];
+const tierFor = r => r.pass ? PASS : tierOf(r.depth);
 const $ = s => document.querySelector(s), app = $('#app');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
@@ -284,14 +296,26 @@ function start(mode){
 }
 // Put a card on the battlefield; the newest one gets the summoning animation.
 function setSlot(i, anim){
-  const r = S.res[i], t = tierOf(r.depth), el = $('#field').children[i];
+  const r = S.res[i], t = tierFor(r), el = $('#field').children[i];
   el.style.setProperty('--c', t[3]); el.className = 'slot filled' + (anim ? ' summon' : ''); el.title = r.name; el.innerHTML = '';
   const pc = document.createElement('div'); pc.className = 'pc';
   const cv = document.createElement('canvas'); cv.width = 96; cv.height = 134; pc.append(cv);
   if(r.img){ const im = new Image(); im.onload = () => cv.getContext('2d').drawImage(im,0,0,96,134); im.src = r.img; }
+  else if(r.pass){ const x = cv.getContext('2d'); x.fillStyle = '#2a2342'; x.fillRect(0,0,96,134); x.fillStyle = '#8b93a7'; for(let i = 0; i < 8; i++){ x.fillRect(24+i*6,40+i*6,6,6); x.fillRect(66-i*6,40+i*6,6,6); } }
   const cap = document.createElement('div'); cap.className = 'cap';
   cap.innerHTML = `<span class="nm">${esc(r.name)}</span><b>${t[1]} ${Math.round(r.depth)}</b>`;
   el.append(pc, cap);
+  fitAll();
+}
+// Shrink each caption line until it fits its card; wrap only if it still can't fit at the minimum size.
+function fitAll(){
+  if(typeof getComputedStyle !== 'function') return;
+  document.querySelectorAll('.cap > *').forEach(el => {
+    el.style.fontSize = ''; el.style.whiteSpace = 'nowrap'; el.style.overflowWrap = '';
+    let fs = parseFloat(getComputedStyle(el).fontSize);
+    while(el.scrollWidth > el.clientWidth + 1 && fs > 11){ fs -= 1; el.style.fontSize = fs + 'px'; }
+    if(el.scrollWidth > el.clientWidth + 1){ el.style.whiteSpace = 'normal'; el.style.overflowWrap = 'anywhere'; }
+  });
 }
 function panel(h){
   [...$('#field').children].forEach((el,i) => el.classList.toggle('cur', i === S.res.length && S.res.length < 7));
@@ -328,8 +352,8 @@ function match(raw){
 }
 function guess(){
   const i = S.ids[S.res.length];
-  panel(`<h2>${esc(PROMPTS[i][0])}</h2><p class="sub">Rarer cards do more damage.</p>
-  <div class="box"><input id="inp" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type a card name"><button id="go">Summon</button></div><div class="hint" id="hint"></div>
+  panel(`<h2>${esc(PROMPTS[i][0])}</h2><p class="sub">More obscure cards do more damage.</p>
+  <div class="box"><input id="inp" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type a card name"><button id="go">Summon</button><button class="alt" id="pass" title="Skip this question">Pass</button></div><div class="hint" id="hint"></div>
   <div class="mull">${S.used === null
     ? `<button class="dice" id="dice" title="Mulligan" aria-label="Mulligan: swap this question">${DICE}</button><p class="sub">Mulligan: swap this question, once per run.</p>`
     : '<p class="sub">Mulligan used.</p>'}</div>`);
@@ -338,6 +362,7 @@ function guess(){
   inp.onkeydown = e => { if(e.key === 'Enter') submit(); };
   inp.oninput = () => { $('#hint').textContent = ''; };
   $('#go').onclick = submit;
+  $('#pass').onclick = pass;
   if($('#dice')) $('#dice').onclick = mulligan;
 }
 const DICE = `<svg width="56" height="56" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"><rect width="12" height="12" fill="#f3e9d2"/><rect y="11" width="12" height="1" fill="#b9a9d6"/><rect x="11" width="1" height="12" fill="#b9a9d6"/><g fill="#120a22"><rect x="2" y="2" width="2" height="2"/><rect x="8" y="2" width="2" height="2"/><rect x="5" y="5" width="2" height="2"/><rect x="2" y="8" width="2" height="2"/><rect x="8" y="8" width="2" height="2"/></g></svg>`;
@@ -350,6 +375,10 @@ function mulligan(){
   S.ids[cur] = left[Math.floor(rng(hash(S.seed + 'mull' + cur))() * left.length)];
   S.used = old; save(); next();
 }
+function pass(){
+  S.res.push({ name: 'Pass', pass: true, depth: 0, rank: null, n: S.set.n, img: null, label: PROMPTS[S.ids[S.res.length]][0] });
+  save(); setSlot(S.res.length - 1, true); reveal();
+}
 function choose(c){
   S.res.push({ name: c.name, depth: c.depth, rank: c.rank, n: S.set.n, img: c.img, label: PROMPTS[S.ids[S.res.length]][0] });
   save();
@@ -357,22 +386,37 @@ function choose(c){
   reveal();
 }
 function reveal(){
-  const r = S.res[S.res.length-1], t = tierOf(r.depth), last = S.res.length >= 7;
-  panel(`<div class="tier" style="color:${t[3]}">Summoned: ${t[1]}</div><div class="nm2">${esc(r.name)}</div>
+  const r = S.res[S.res.length-1], t = tierFor(r), last = S.res.length >= 7;
+  panel(`<div class="tier" style="color:${t[3]}">${r.pass ? 'Passed' : 'Summoned: ' + t[1]}</div><div class="nm2">${r.pass ? 'No card summoned' : esc(r.name)}</div>
     <div class="gauge"><b id="g" style="background:${t[3]}"></b></div>
-    <p class="sub" style="margin-top:10px">Depth ${Math.round(r.depth)} / 100 · ${r.rank ? 'popularity rank #'+r.rank : 'never played in Commander'}</p>
+    <p class="sub" style="margin-top:10px">Depth ${Math.round(r.depth)} / 100${r.pass ? '' : ' · ' + (r.rank ? 'popularity rank #'+r.rank : 'never played in Commander')}</p>
     <div class="row"><button id="nx">${last?'See results':'Next prompt'}</button></div>`);
   requestAnimationFrame(() => requestAnimationFrame(() => { $('#g').style.width = r.depth + '%'; }));
   $('#nx').onclick = next;
 }
+// The ten deepest (most obscure) answers for a question; cards never played in Commander tie at the top.
+function topList(set, r){
+  const best = [...set.cards].sort((a,b) => b.depth - a.depth || a.name.localeCompare(b.name)), td = best[0].depth;
+  const tied = best.filter(c => c.depth === td).length;
+  return '<small>Deepest answers' + (td === 95 ? ' (never played in Commander)' : '') + '</small>' +
+    best.slice(0,10).map(c => `<div class="${c.name === r.name ? 'me' : ''}"><span>${esc(c.name)}${c.name === r.name ? ' ← you' : ''}</span><span class="d">${Math.round(c.depth)}</span></div>`).join('') +
+    (tied > 10 ? `<small>+ ${tied - 10} more tied at ${Math.round(td)}</small>` : '');
+}
 function end(){
   const total = Math.round(S.res.reduce((a,r) => a + r.depth, 0));
-  const share = `Relentless Rats ${S.mode==='daily'?S.seed:'(unlimited)'}\n${S.res.map(r=>tierOf(r.depth)[2]).join('')}\n${total} / 700`;
+  const share = `Relentless Rats ${S.mode==='daily'?S.seed:'(unlimited)'}\n${S.res.map(r=>tierFor(r)[2]).join('')}\n${total} / 700`;
   panel(`<h2>The swarm is summoned</h2><div class="big">${total} <span class="sub">/ 700</span></div>
-    ${S.res.map(r=>`<div class="res"><span>${esc(r.name)}<br><small>${esc(r.label)}</small></span><span style="color:${tierOf(r.depth)[3]}">${tierOf(r.depth)[1]} ${Math.round(r.depth)}</span></div>`).join('')}
+    <p class="sub">Tap a question to see its deepest answers.</p>
+    ${S.res.map((r,k)=>`<details class="res" data-k="${k}"><summary><span>${esc(r.name)}<br><small>${esc(r.label)}</small></span><span style="color:${tierFor(r)[3]}">${tierFor(r)[1]} ${Math.round(r.depth)}</span></summary><div class="top"></div></details>`).join('')}
     <div class="row"><button id="sh">Copy result</button><button class="alt" id="un">Play unlimited</button></div><div class="hint" id="hint" style="color:var(--mute)"></div>`);
   $('#sh').onclick = async () => { try{ await navigator.clipboard.writeText(share); $('#hint').textContent = 'Copied.'; }catch(e){ $('#hint').textContent = share; } };
   $('#un').onclick = () => start('unlimited');
+  document.querySelectorAll('.res').forEach(d => d.addEventListener('toggle', async () => {
+    if(!d.open || d.dataset.done) return;
+    d.dataset.done = '1'; const box = d.querySelector('.top'), k = +d.dataset.k; box.textContent = 'Loading…';
+    try{ box.innerHTML = topList(await load(S.ids[k]), S.res[k]); }
+    catch(e){ box.textContent = 'Couldn’t load the list.'; d.dataset.done = ''; }
+  }));
 }
 // Final Fantasy-style overworld: noise picks ocean, coast, desert, plains, forest, hills or mountains per 8px tile.
 function drawWorld(){
@@ -402,8 +446,9 @@ function drawWorld(){
     else { R(0,0,8,8,'#6b5b3c'); R(3,0,2,1,'#f0f0f8'); R(2,1,4,1,'#a8a8b8'); R(1,2,6,2,'#8a7a5a'); R(0,4,8,4,'#5a4a34'); R(3,3,2,1,'#f0f0f8'); }
   }
 }
-let wt; addEventListener('resize', () => { clearTimeout(wt); wt = setTimeout(drawWorld, 150); });
+let wt; addEventListener('resize', () => { clearTimeout(wt); wt = setTimeout(() => { drawWorld(); fitAll(); }, 150); });
 drawWorld();
+if(document.fonts) document.fonts.ready.then(fitAll);
 start('daily');
 </script>
 </body>
