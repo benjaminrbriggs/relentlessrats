@@ -77,8 +77,22 @@ button:active{padding:18px 26px 14px 30px;border-color:#5c4210 #efd484 #efd484 #
 .top small{display:block;color:var(--mute);font-size:24px;margin-bottom:4px}
 .res span+span{background:var(--ink);padding:0 10px;align-self:center;white-space:nowrap}
 .res small{color:var(--mute);font-size:26px}
-@media (max-width:640px){body{padding:8px;font-size:24px}.cap{font-size:20px}.panel{padding:20px}input{font-size:28px}button{font-size:22px;padding:12px 18px}.nm2{font-size:34px}.big{font-size:42px}.tier{font-size:26px}.field{grid-template-columns:repeat(4,1fr)}.mat{padding:16px 12px 24px}h1{font-size:30px}h2{font-size:26px}.logo svg{width:56px;height:auto}}
-@media (prefers-reduced-motion:reduce){.summon .pc,.summon::after,.slot.cur{animation:none}.gauge b{transition:none}}
+/* opponent + combat */
+.boss{position:relative;display:flex;align-items:center;gap:22px;padding:16px 22px;margin-bottom:14px;background:#121a2acc;border:4px solid;border-color:#070b14 #56688c #56688c #070b14}
+.bsprite{flex:none;line-height:0}
+.bsprite svg{display:block}
+.binfo{flex:1;min-width:0}
+.bname{font:700 32px 'Alegreya Sans',system-ui,sans-serif;color:#f4d98c;margin-bottom:6px}
+.bbar{position:relative;height:30px;border:4px solid;border-color:#070b14 #56688c #56688c #070b14;background:#2a0f14}
+.bbar b{display:block;height:100%;width:100%;background:#d23a3a;transition:width .5s steps(10)}
+.bbar::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,#0000 0 10px,#2a0f14 10px 12px)}
+.blife{margin-top:6px;color:var(--cream)}
+.dmg{position:absolute;left:54px;top:8px;z-index:6;font:700 56px/1 'Alegreya Sans',system-ui,sans-serif;color:#ff7b7b;text-shadow:3px 3px 0 #000;pointer-events:none;animation:rise .9s steps(8) forwards}
+@keyframes rise{from{transform:translateY(0);opacity:1}to{transform:translateY(-50px);opacity:0}}
+.hit{animation:hit .35s steps(4)}
+@keyframes hit{0%,100%{transform:none;filter:none}25%{transform:translateX(-10px);filter:brightness(2.4)}75%{transform:translateX(10px);filter:brightness(2.4)}}
+@media (max-width:640px){body{padding:8px;font-size:24px}.cap{font-size:20px}.panel{padding:20px}input{font-size:28px}button{font-size:22px;padding:12px 18px}.nm2{font-size:34px}.big{font-size:42px}.tier{font-size:26px}.field{grid-template-columns:repeat(4,1fr)}.mat{padding:16px 12px 24px}h1{font-size:30px}h2{font-size:26px}.logo svg{width:56px;height:auto}.bsprite svg{width:70px;height:auto}.bname{font-size:24px}}
+@media (prefers-reduced-motion:reduce){.summon .pc,.summon::after,.slot.cur,.dmg,.hit{animation:none}.gauge b{transition:none}}
 </style>
 </head>
 <body>
@@ -114,7 +128,6 @@ const PROMPTS = [
   ['Name a Sliver','t:sliver'],
   ['Name an Elf','t:elf t:creature'],
   ['Name a Knight','t:knight'],
-  ['Name a Hydra','t:hydra'],
   ['Name a Demon','t:demon'],
   ['Name a Phyrexian creature','t:phyrexian t:creature'],
   ['Name a Vehicle','t:vehicle'],
@@ -125,7 +138,6 @@ const PROMPTS = [
   ['Name a card with cycling','kw:cycling'],
   ['Name a creature with flying and mana value 2','t:creature kw:flying mv=2'],
   ['Name a card that creates a Treasure token','o:"create a treasure token"'],
-  ['Name a black instant that destroys a creature','c:b t:instant o:"destroy target creature"'],
   ['Name a white-blue card','c=wu'],
   ['Name a black-red card','c=br'],
   ['Name a green-blue card','c=gu'],
@@ -151,29 +163,22 @@ const PROMPTS = [
   ['Name a Treefolk','t:treefolk'],
   ['Name an Eldrazi','t:eldrazi'],
   ['Name a Golem','t:golem'],
-  ['Name a Werewolf','t:werewolf'],
   ['Name a Shaman','t:shaman t:creature'],
   ['Name a Cleric','t:cleric t:creature'],
   ['Name a Druid','t:druid t:creature'],
   ['Name an Insect','t:insect t:creature'],
-  ['Name a Squirrel','t:squirrel t:creature'],
   ['Name a legendary Dragon','t:legendary t:dragon'],
   ['Name a legendary Elf','t:legendary t:elf'],
   // keywords
   ['Name a creature with haste and mana value 2 or less','t:creature kw:haste mv<=2'],
   ['Name a creature with lifelink','t:creature kw:lifelink'],
   ['Name a creature with flash','t:creature kw:flash'],
-  ['Name a creature with hexproof','t:creature kw:hexproof'],
   ['Name a creature with menace','t:creature kw:menace'],
   ['Name a creature with first strike','t:creature kw:"first strike"'],
   ['Name a card with kicker','kw:kicker'],
   ['Name a card with flashback','kw:flashback'],
-  ['Name a card with cascade','kw:cascade'],
   ['Name a card with convoke','kw:convoke'],
-  ['Name a card with prowess','kw:prowess'],
   ['Name a card with ward','kw:ward'],
-  ['Name a card with storm','kw:storm'],
-  ['Name a card with affinity','kw:affinity'],
   // colors, costs and stats
   ['Name a blue creature with mana value 1','c:u t:creature mv=1'],
   ['Name a white creature with mana value 1','c:w t:creature mv=1'],
@@ -192,21 +197,13 @@ const PROMPTS = [
   // card shapes and rarer types
   ['Name a split card','is:split'],
   ['Name a transforming double-faced card','is:transform'],
-  ['Name a modal double-faced card','is:mdfc'],
   ['Name an Adventure card','t:adventure'],
-  ['Name a Gate','t:gate'],
-  ['Name a Desert','t:desert'],
-  ['Name a Lesson','t:lesson'],
-  ['Name a legendary land','t:legendary t:land'],
   // effects
   ['Name a mana rock','t:artifact o:"{T}: Add" -t:creature -t:land mv<=3'],
   ['Name a red burn spell','c:r t:instant o:"damage to any target"'],
-  ['Name a green ramp spell','c:g t:sorcery o:"search your library for a basic land"'],
-  ['Name a board wipe','o:"destroy all creatures"'],
   ['Name a reanimation spell','o:"from your graveyard to the battlefield" -t:creature'],
   ['Name a card that makes Zombie tokens','o:"Zombie creature token"'],
   ['Name a card that makes Food','o:"create a Food token"'],
-  ['Name a card that makes Clues','o:"create a Clue token"'],
   // artists
   ['Name a card illustrated by Rebecca Guay','a:"Rebecca Guay"'],
   ['Name a card illustrated by Terese Nielsen','a:"Terese Nielsen"'],
@@ -224,6 +221,76 @@ const PROMPTS = [
   ['Name a card from Lorwyn','set:lrw'],
   ['Name a card from Urza’s Saga','set:usg'],
   ['Name a card from Tempest','set:tmp'],
+  // ---- fourth set: prompts that combine several card attributes ----
+  ['Name a red creature with flying','c:r t:creature kw:flying'],
+  ['Name a blue creature with flying and mana value 3 or less','c:u t:creature kw:flying mv<=3'],
+  ['Name a green creature with trample','c:g t:creature kw:trample'],
+  ['Name a black creature with deathtouch','c:b t:creature kw:deathtouch'],
+  ['Name a white creature with lifelink','c:w t:creature kw:lifelink'],
+  ['Name a white creature with vigilance','c:w t:creature kw:vigilance'],
+  ['Name a red creature with first strike','c:r t:creature kw:"first strike"'],
+  ['Name a green creature with reach','c:g t:creature kw:reach'],
+  ['Name a black creature with menace','c:b t:creature kw:menace'],
+  ['Name a blue creature with flash','c:u t:creature kw:flash'],
+  ['Name a red creature with haste and mana value 3 or less','c:r t:creature kw:haste mv<=3'],
+  ['Name a creature with flying and vigilance','t:creature kw:flying kw:vigilance'],
+  ['Name an artifact creature with flying','t:artifact t:creature kw:flying'],
+  ['Name a multicolored legendary creature','t:legendary t:creature c>=2'],
+  ['Name a legendary creature with mana value 3','t:legendary t:creature mv=3'],
+  ['Name a green legendary creature','t:legendary t:creature c:g'],
+  ['Name a red legendary creature','t:legendary t:creature c:r'],
+  ['Name a blue legendary creature','t:legendary t:creature c:u'],
+  ['Name a legendary artifact creature','t:legendary t:artifact t:creature'],
+  ['Name a red Dragon','c:r t:dragon'],
+  ['Name a blue Wizard','c:u t:wizard'],
+  ['Name a black Zombie','c:b t:zombie'],
+  ['Name a green Elf','c:g t:elf'],
+  ['Name a red Goblin','c:r t:goblin'],
+  ['Name a black Vampire','c:b t:vampire'],
+  ['Name a green Beast','c:g t:beast'],
+  ['Name a blue Merfolk','c:u t:merfolk'],
+  ['Name a white Knight','c:w t:knight'],
+  ['Name a white Angel','c:w t:angel'],
+  ['Name a black Demon','c:b t:demon'],
+  ['Name a white Soldier','c:w t:soldier'],
+  ['Name a Human Wizard','t:human t:wizard'],
+  ['Name a Human Soldier with mana value 2 or less','t:human t:soldier mv<=2'],
+  ['Name an Elf Druid','t:elf t:druid'],
+  ['Name an Elf Warrior','t:elf t:warrior'],
+  ['Name a Human Cleric','t:human t:cleric'],
+  ['Name a Human Rogue','t:human t:rogue'],
+  ['Name a blue instant with mana value 2 or less','t:instant c:u mv<=2'],
+  ['Name a black instant with mana value 2','t:instant c:b mv=2'],
+  ['Name a multicolored instant','t:instant c>=2'],
+  ['Name a green sorcery with mana value 4 or more','t:sorcery c:g mv>=4'],
+  ['Name a black sorcery with mana value 3','t:sorcery c:b mv=3'],
+  ['Name a white enchantment with mana value 3 or less','t:enchantment c:w mv<=3 -t:creature'],
+  ['Name a multicolored artifact','t:artifact c>=2'],
+  ['Name an artifact with mana value 5','t:artifact mv=5'],
+  ['Name an instant with mana value 4','t:instant mv=4'],
+  ['Name a green creature with mana value 6','t:creature c:g mv=6'],
+  ['Name a creature with mana value 7 or more','t:creature mv>=7'],
+  ['Name a multicolored creature with mana value 2','t:creature c>=2 mv=2'],
+  ['Name an artifact with mana value 1','t:artifact mv=1'],
+  ['Name a nonbasic land that enters tapped','t:land -t:basic o:"enters tapped"'],
+  ['Name a nonbasic land that taps for any color','t:land -t:basic o:"any color"'],
+  ['Name a rare black creature','r:r c:b t:creature'],
+  ['Name a mythic rare red creature','r:m c:r t:creature'],
+  ['Name a mythic rare green creature','r:m c:g t:creature'],
+  ['Name an uncommon blue creature with flying','r:u c:u t:creature kw:flying'],
+  ['Name a common white creature with flying','r:c c:w t:creature kw:flying'],
+  ['Name a rare artifact','r:r t:artifact'],
+  ['Name a rare nonbasic land','r:r t:land -t:basic'],
+  ['Name a red creature with power 4 or more and mana value 4 or less','c:r t:creature pow>=4 mv<=4'],
+  ['Name a white flying creature with power 1 or less','c:w t:creature kw:flying pow<=1'],
+  ['Name a black creature with toughness 1','c:b t:creature tou=1'],
+  ['Name a blue creature with power 0','c:u t:creature pow=0'],
+  ['Name a creature with more power than toughness and mana value 2','t:creature pow>tou mv=2'],
+  ['Name a creature with equal power and toughness and mana value 4','t:creature pow=tou mv=4'],
+  ['Name a blue creature that draws a card when it enters','c:u t:creature o:"enters" o:"draw a card"'],
+  ['Name a red creature that deals damage to any target','c:r t:creature o:"any target"'],
+  ['Name a white creature that creates a token','c:w t:creature o:"create" o:"token"'],
+  ['Name a black creature that makes each opponent lose life','c:b t:creature o:"each opponent loses"'],
 ];
 const TIERS = [ // [depth below, name, square, color] — most common answers to least common
   [25,'Common','⬜','#b4bbc8'],[50,'Uncommon','🟦','#7fb2d9'],[75,'Rare','🟨','#d9b13b'],
@@ -241,35 +308,51 @@ function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t
 function pick(seed){const r=rng(hash(seed)),a=[...PROMPTS.keys()];for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a.slice(0,7)}
 const today = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 
-// Load the answer set from Scryfall and score rarity by EDHREC popularity rank
+const MIN_ANSWERS = 100;   // a prompt with fewer possible answers is swapped out
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+// Load every printing from Scryfall, collapse to one entry per card, and score obscurity:
+//  - cards with an EDHREC rank: depth 0-85 by popularity rank within the prompt
+//  - banned in Commander (no EDHREC rank, but famous): depth 10-37, shallower the more printings
+//  - never played in Commander: depth 85-100, deepest for single-printing cards
 const cache = {};
-async function load(i){
+async function load(i, prog){
   if(cache[i]) return cache[i];
-  let url = 'https://api.scryfall.com/cards/search?unique=cards&order=edhrec&q=' + encodeURIComponent(PROMPTS[i][1] + ' game:paper');
-  let cards = [];
-  for(let p=0; p<40 && url; p++){            // follow every page (175 cards each) until Scryfall says it's done
-    let j = null;
-    for(let t=0; t<3 && !j; t++){            // retry a failed page instead of silently dropping the rest
-      const r = await fetch(url);
-      if(r.ok) j = await r.json(); else await new Promise(r => setTimeout(r, 600));
+  const key = 'rats-set:' + PROMPTS[i][1];      // cached for a day, as Scryfall asks
+  let rows = null;
+  try{ const c = JSON.parse(localStorage.getItem(key) || 'null'); if(c && Date.now() - c.t < 864e5) rows = c.rows; }catch(e){}
+  if(!rows){
+    let url = 'https://api.scryfall.com/cards/search?unique=prints&order=edhrec&q=' + encodeURIComponent(PROMPTS[i][1] + ' game:paper'), seen = 0;
+    const by = new Map();
+    for(let p = 0; p < 80 && url; p++){
+      let j = null;
+      for(let t = 0; t < 3 && !j; t++){          // retry a failed page instead of silently dropping the rest
+        const r = await fetch(url);
+        if(r.ok) j = await r.json(); else if(r.status === 404) j = { data: [], has_more: false }; else await sleep(600);
+      }
+      if(!j) throw new Error('Scryfall request failed');
+      for(const c of j.data){
+        const e = by.get(c.name); seen++;
+        if(e) e[2]++; else by.set(c.name, [c.name, c.edhrec_rank || 0, 1, c.legalities && c.legalities.commander === 'banned' ? 1 : 0, c.id]);
+      }
+      if(prog) prog(seen);
+      url = j.has_more ? j.next_page : null;
+      if(url) await sleep(110);
     }
-    if(!j) throw new Error('Scryfall request failed');
-    cards.push(...j.data);
-    url = j.has_more ? j.next_page : null;
-    if(url) await new Promise(r => setTimeout(r, 110));
+    rows = [...by.values()];
+    try{ localStorage.setItem(key, JSON.stringify({ t: Date.now(), rows })); }catch(e){}
   }
-  if(!cards.length) throw new Error('empty');
-  const ranked = cards.filter(c => c.edhrec_rank).sort((a,b) => a.edhrec_rank - b.edhrec_rank);
-  const rest = cards.filter(c => !c.edhrec_rank);
-  const R = ranked.length;
-  const out = [...ranked, ...rest].map((c,idx) => ({
-    name: c.name, k: norm(c.name), f: norm(c.name.split(' // ')[0]), rank: idx < R ? idx + 1 : null,
-    depth: idx < R ? 90 * idx / Math.max(1, R - 1) : 95,   // unranked = never seen in Commander decks
-    img: (c.image_uris || (c.card_faces && c.card_faces[0].image_uris) || {}).normal
-  }));
-  return cache[i] = { cards: out, n: out.length };
+  const ranked = rows.filter(r => r[1]).sort((a,b) => a[1] - b[1]), R = ranked.length;
+  const pos = new Map(ranked.map((r,idx) => [r[0], idx]));
+  const cards = rows.map(([name, edh, prints, banned, id]) => {
+    let depth, rank = null;
+    if(edh){ const idx = pos.get(name); rank = idx + 1; depth = 85 * idx / Math.max(1, R - 1); }
+    else if(banned) depth = Math.max(10, 40 - 3 * prints);
+    else depth = 100 - 2.5 * Math.min(prints - 1, 6);
+    return { name, k: norm(name), f: norm(name.split(' // ')[0]), rank, depth, prints, banned: !!banned,
+             img: 'https://api.scryfall.com/cards/' + id + '?format=image&version=normal' };
+  });
+  return cache[i] = { cards, n: cards.length };
 }
-
 
 // Logo: the rat king (left half is drawn, then mirrored)
 const mir = a => a.map(r => r + [...r].reverse().join(''));
@@ -281,16 +364,30 @@ function sprite(px){
   return `<svg width="${20*px}" height="${LOGO.length*px}" viewBox="0 0 20 ${LOGO.length}" shape-rendering="crispEdges" aria-hidden="true">${o}</svg>`;
 }
 
+// The opponent: a hooded archmage (left half drawn, then mirrored). Name, life and tint change daily.
+const BOSS = mir(["....oooooo","..ooouuuuu",".ouuuuuuuu","ouuuuuuuuu","ouuuoooooo","ouuoffffff","ouuoffeeff","ouuoffffff","ouuuofffff","ouuuuoffff","ouuuuuuuuu","ouuuvuuuuu","ouuuuggggg","ouuuuuuuuu","ouuuuuuuuu","ouuuuuuuuu","ouuuuuuuuu","oooooooooo"]);
+const BC = {o:'#140a24',u:'#4a2f8a',v:'#7a5cd0',f:'#0b0614',e:'#7df9ff',g:'#f4d98c'};
+const BOSSES = ['Zarkhul the Hoarder','Old Mother Brine','The Pale Archmage','Gruk, Warden of Bones','Lady Veshtar','The Hollow King'];
+function bossFor(seed){ const h = hash(seed + 'boss'); return { name: BOSSES[h % BOSSES.length], life: 300 + ((h >>> 8) % 11) * 10, hue: (h >>> 16) % 360 }; }
+function bossSprite(px, hue){
+  let o = ''; BOSS.forEach((row,y) => [...row].forEach((ch,x) => { if(BC[ch]) o += `<rect x="${x}" y="${y}" width="1" height="1" fill="${BC[ch]}"/>`; }));
+  return `<svg width="${20*px}" height="${BOSS.length*px}" viewBox="0 0 20 ${BOSS.length}" shape-rendering="crispEdges" style="filter:hue-rotate(${hue}deg)" aria-hidden="true">${o}</svg>`;
+}
+function setLife(v){ $('#bl').textContent = v; $('#bfill').style.width = (100 * v / S.boss.life) + '%'; }
+
 let S;
 function start(mode){
   const seed = mode === 'daily' ? today() : String(Math.random());
-  S = { mode, seed, ids: pick(seed), res: [], set: null, used: null };   // used = id of the question swapped out by the mulligan
+  S = { mode, seed, ids: pick(seed), res: [], set: null, used: null, boss: bossFor(seed) };   // used = id of the question swapped out by the mulligan
   if(mode === 'daily'){ try{
     const d = JSON.parse(localStorage.getItem('rats:' + seed) || '[]');
     if(Array.isArray(d)) S.res = d; else { S.res = d.res || []; if(d.ids) S.ids = d.ids; if(d.used != null) S.used = d.used; }
   }catch(e){} }
+  const B = S.boss;
   app.innerHTML = `<header><div class="logo">${sprite(4)}<h1>Relentless Rats</h1></div><span>${mode==='daily'?'Daily · '+seed:'Unlimited'}</span></header>
+    <section class="boss" id="boss"><div class="bsprite" id="bsprite">${bossSprite(5, B.hue)}</div><div class="binfo"><div class="bname">${esc(B.name)}</div><div class="bbar"><b id="bfill"></b></div><div class="blife">Life <span id="bl"></span> / ${B.life}</div></div></section>
     <section class="field" id="field">${'<div class="slot"><div class="ph">?</div></div>'.repeat(7)}</section><section class="panel" id="panel"></section>`;
+  setLife(B.life);
   S.res.forEach((_,i) => setSlot(i,false));
   next();
 }
@@ -323,9 +420,19 @@ function panel(h){
 }
 async function next(){
   if(S.res.length >= 7) return end();
-  S.set = null; panel('<p class="sub">Shuffling the library…</p>');
-  try{ S.set = await load(S.ids[S.res.length]); guess(); }
-  catch(e){ panel('<p>Couldn’t reach Scryfall. Open this file in a browser with an internet connection, then retry.</p><div class="row"><button id="retry">Retry</button></div>'); $('#retry').onclick = next; }
+  S.set = null; panel('<p class="sub" id="ld">Shuffling the library…</p>');
+  const idx = S.res.length;
+  try{
+    for(let tries = 0; ; tries++){
+      S.set = await load(S.ids[idx], n => { const l = $('#ld'); if(l) l.textContent = 'Shuffling the library… ' + n + ' printings'; });
+      if(S.set.n >= MIN_ANSWERS) break;
+      if(tries > 25) throw new Error('no valid prompt');
+      // Too few answers: replace it (deterministically, so a daily run stays the same for everyone) with a prompt not already in the run.
+      const cand = [...PROMPTS.keys()].filter(k => !S.ids.includes(k) && k !== S.used);
+      S.ids[idx] = cand[Math.floor(rng(hash(S.seed + 'swap' + idx + '_' + tries))() * cand.length)];
+    }
+    save(); guess();
+  }catch(e){ panel('<p>Couldn’t reach Scryfall. Open this file in a browser with an internet connection, then retry.</p><div class="row"><button id="retry">Retry</button></div>'); $('#retry').onclick = next; }
 }
 function lev(a,b){
   const d=Array.from({length:a.length+1},(_,i)=>[i,...Array(b.length).fill(0)]);
@@ -380,36 +487,69 @@ function pass(){
   save(); setSlot(S.res.length - 1, true); reveal();
 }
 function choose(c){
-  S.res.push({ name: c.name, depth: c.depth, rank: c.rank, n: S.set.n, img: c.img, label: PROMPTS[S.ids[S.res.length]][0] });
+  S.res.push({ name: c.name, depth: c.depth, rank: c.rank, prints: c.prints, banned: c.banned, n: S.set.n, img: c.img, label: PROMPTS[S.ids[S.res.length]][0] });
   save();
   setSlot(S.res.length - 1, true);
   reveal();
+}
+function why(r){   // one-line reason for a card's depth
+  if(r.pass) return '';
+  const pr = r.prints || 1, pl = pr === 1 ? ' printing' : ' printings';
+  return ' · ' + (r.rank ? 'popularity rank #' + r.rank : (r.banned ? 'banned in Commander' : 'never played in Commander') + ', ' + pr + pl);
 }
 function reveal(){
   const r = S.res[S.res.length-1], t = tierFor(r), last = S.res.length >= 7;
   panel(`<div class="tier" style="color:${t[3]}">${r.pass ? 'Passed' : 'Summoned: ' + t[1]}</div><div class="nm2">${r.pass ? 'No card summoned' : esc(r.name)}</div>
     <div class="gauge"><b id="g" style="background:${t[3]}"></b></div>
-    <p class="sub" style="margin-top:10px">Depth ${Math.round(r.depth)} / 100${r.pass ? '' : ' · ' + (r.rank ? 'popularity rank #'+r.rank : 'never played in Commander')}</p>
-    <div class="row"><button id="nx">${last?'See results':'Next prompt'}</button></div>`);
+    <p class="sub" style="margin-top:10px">Deals ${Math.round(r.depth)} damage${why(r)}</p>
+    <div class="row"><button id="nx">${last ? 'Attack!' : 'Next prompt'}</button></div>`);
   requestAnimationFrame(() => requestAnimationFrame(() => { $('#g').style.width = r.depth + '%'; }));
-  $('#nx').onclick = next;
+  $('#nx').onclick = last ? combat : next;
 }
-// The ten deepest (most obscure) answers for a question; cards never played in Commander tie at the top.
+// Combat: each summoned rat charges the opponent in turn, deals its depth as damage, and drains the life bar.
+function hit(life, dmg){
+  life = Math.max(0, life - dmg); setLife(life);
+  const d = document.createElement('div'); d.className = 'dmg'; d.textContent = dmg ? '-' + dmg : '0'; $('#boss').append(d); setTimeout(() => d.remove(), 900);
+  const sp = $('#bsprite'); sp.classList.remove('hit'); void sp.offsetWidth; sp.classList.add('hit');
+  return life;
+}
+async function combat(){
+  panel('<h2>Combat</h2><p class="sub">Your rats attack!</p>');
+  let life = S.boss.life; setLife(life);
+  const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  for(let i = 0; i < 7; i++){
+    const r = S.res[i]; if(!r || r.pass) continue;
+    const el = $('#field').children[i], dmg = Math.round(r.depth);
+    if(typeof el.animate === 'function' && !reduce){
+      const a = $('#bsprite').getBoundingClientRect(), b = el.getBoundingClientRect();
+      const dx = a.left + a.width / 2 - (b.left + b.width / 2), dy = a.top + a.height / 2 - (b.top + b.height / 2);
+      el.style.zIndex = 5;
+      const anim = el.animate([{ transform: 'none' }, { transform: `translate(${dx}px,${dy}px) scale(1.12)`, offset: .5 }, { transform: 'none' }], { duration: 800, easing: 'steps(10)' });
+      await sleep(400); life = hit(life, dmg);
+      try{ await anim.finished; }catch(e){}
+      el.style.zIndex = '';
+    }else{ life = hit(life, dmg); await sleep(reduce ? 250 : 0); }
+  }
+  await sleep(300); end();
+}
+// The ten deepest (most obscure) answers for a question.
 function topList(set, r){
   const best = [...set.cards].sort((a,b) => b.depth - a.depth || a.name.localeCompare(b.name)), td = best[0].depth;
   const tied = best.filter(c => c.depth === td).length;
-  return '<small>Deepest answers' + (td === 95 ? ' (never played in Commander)' : '') + '</small>' +
+  return '<small>Deepest answers' + (best[0].rank === null && !best[0].banned ? ' (never played in Commander, fewest printings)' : '') + '</small>' +
     best.slice(0,10).map(c => `<div class="${c.name === r.name ? 'me' : ''}"><span>${esc(c.name)}${c.name === r.name ? ' ← you' : ''}</span><span class="d">${Math.round(c.depth)}</span></div>`).join('') +
     (tied > 10 ? `<small>+ ${tied - 10} more tied at ${Math.round(td)}</small>` : '');
 }
 function end(){
-  const total = Math.round(S.res.reduce((a,r) => a + r.depth, 0));
-  const share = `Relentless Rats ${S.mode==='daily'?S.seed:'(unlimited)'}\n${S.res.map(r=>tierFor(r)[2]).join('')}\n${total} / 700`;
-  panel(`<h2>The swarm is summoned</h2><div class="big">${total} <span class="sub">/ 700</span></div>
-    <p class="sub">Tap a question to see its deepest answers.</p>
+  const B = S.boss, total = Math.round(S.res.reduce((a,r) => a + r.depth, 0)), left = Math.max(0, B.life - total), won = total >= B.life;
+  setLife(left);
+  const share = `Relentless Rats ${S.mode==='daily'?S.seed:'(unlimited)'}\n${S.res.map(r=>tierFor(r)[2]).join('')}\n⚔️ ${total} damage · ${won ? 'defeated ' + B.name : B.name + ' survived with ' + left + ' life'}`;
+  panel(`<h2>${won ? esc(B.name) + ' is defeated!' : esc(B.name) + ' survives'}</h2><div class="big">${total} <span class="sub">damage</span></div>
+    <p class="sub">${won ? 'You needed ' + B.life + ' and dealt ' + total + '.' : left + ' of ' + B.life + ' life left. Tap a question to see the deepest answers you missed.'}${won ? ' Tap a question to see its deepest answers.' : ''}</p>
     ${S.res.map((r,k)=>`<details class="res" data-k="${k}"><summary><span>${esc(r.name)}<br><small>${esc(r.label)}</small></span><span style="color:${tierFor(r)[3]}">${tierFor(r)[1]} ${Math.round(r.depth)}</span></summary><div class="top"></div></details>`).join('')}
-    <div class="row"><button id="sh">Copy result</button><button class="alt" id="un">Play unlimited</button></div><div class="hint" id="hint" style="color:var(--mute)"></div>`);
+    <div class="row"><button id="sh">Copy result</button><button class="alt" id="rp">Replay attack</button><button class="alt" id="un">Play unlimited</button></div><div class="hint" id="hint" style="color:var(--mute)"></div>`);
   $('#sh').onclick = async () => { try{ await navigator.clipboard.writeText(share); $('#hint').textContent = 'Copied.'; }catch(e){ $('#hint').textContent = share; } };
+  $('#rp').onclick = combat;
   $('#un').onclick = () => start('unlimited');
   document.querySelectorAll('.res').forEach(d => d.addEventListener('toggle', async () => {
     if(!d.open || d.dataset.done) return;
